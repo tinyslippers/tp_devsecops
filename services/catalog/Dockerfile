@@ -1,6 +1,4 @@
-# Dockerfile
-# Utilisation d'une image python ancienne pour garantir des CVEs détectables par Trivy
-FROM python:3.7-alpine
+FROM python:3.11-alpine
 
 WORKDIR /app
 
@@ -9,7 +7,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Port exposé défini dans la doc d'architecture
+# Sécurité : User non-root
+RUN adduser -D traveluser
+USER traveluser
+
 EXPOSE 5000
 
 CMD ["python", "app.py"]
