@@ -1,0 +1,69 @@
+name: DevSecOps Pipeline
+
+on: [push, pull_request]
+
+jobs:
+  # ÉTAPE 1 : ANALYSE DU CODE (SAST & SECRETS)
+  security-code-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Important pour Gitleaks
+
+      # 1. GITLEAKS : Détection de secrets
+      - name: Gitleaks - Secret Scanning
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Ce step va échouer si Gitleaks trouve la clé AWS dans app.py
+
+      # 2. SEMGREP : Analyse statique du code (SAST)
+      - name: Semgrep - SAST
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: p/python # Règles standard pour Python
+        # Ce step va échouer/alerter si Semgrep trouve le "os.system" dans app.py
+
+  # ÉTAPE 2 : BUILD & CONTAINER SCAN
+  build-and-scan-image:
+    needs: security-code-scan # On ne build pas si le code est pourri
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build Docker Image
+        run: docker build -t myapp:${{ github.sha }} .
+
+      # 3. TRIVY : Scan de l'image Docker (SCA / Container Security)
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'myapp:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1' # CA C'EST LA GATE : 1 = Fail, 0 = Pass
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+        # Ce step va échouer car l'image python:3.7-alpine a des failles critiques
+
+  # ÉTAPE 3 : DAST (Test dynamique)
+  dast-scan:
+    needs: build-and-scan-image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      # On lance l'app pour pouvoir l'attaquer
+      - name: Build & Run App
+        run: |
+          docker build -t myapp:target .
+          docker run -d -p 5000:5000 --name target-app myapp:target
+          sleep 5 # Attendre que l'app démarre
+
+      # 4. OWASP ZAP : Scan dynamique
+      - name: ZAP Scan
+        uses: zaproxy/action-baseline@v0.7.0
+        with:
+          target: 'http://localhost:5000'
+          fail_action: true # Bloquer si alerte rouge
