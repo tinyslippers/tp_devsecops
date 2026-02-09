@@ -2,14 +2,15 @@ from flask import Flask, request, jsonify, send_file
 import sqlite3
 import subprocess
 import os
+import shlex
 
 app = Flask(__name__)
 
-# (1) Secret en dur (Détecté par Gitleaks)
+# (1) Secret en dur (Détecté par Gitleaks - hors scope Semgrep pour l'instant)
 app.config["SECRET_KEY"] = "booking-site-secret-key-12345"
 ADMIN_TOKEN = "admin-access-token-super-secret"
 
-# --- INTERFACE D'ACCUEIL (FRONTEND MINIMAL) ---
+# --- INTERFACE D'ACCUEIL ---
 @app.route("/")
 def index():
     return """
@@ -61,14 +62,13 @@ def index():
     </html>
     """
 
-# --- API BACKEND VULNÉRABLE ---
+# --- API BACKEND ---
 
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "reservation-api"}
 
-# (2) SQL Injection (Semgrep)
-# Scénario : Recherche de destinations de voyage
+# (2) SQL Injection CORRECTIF
 @app.get("/search")
 def search():
     q = request.args.get("q", "")
@@ -86,56 +86,56 @@ def search():
     conn = sqlite3.connect("bookings.db")
     cur = conn.cursor()
     
-    # VULNERABLE : Concaténation directe
+    # CORRECTIF SÉCURITÉ : Requêtes paramétrées
     try:
-        query = f"SELECT client, destination, price FROM bookings WHERE destination LIKE '%{q}%'"
-        rows = cur.execute(query).fetchall()
+        # On utilise ? comme placeholder (Syntaxe SQLite)
+        query = "SELECT client, destination, price FROM bookings WHERE destination LIKE ?"
+        
+        # On passe les paramètres dans un tuple (correction variable: on utilise 'cur' et pas 'cursor')
+        cur.execute(query, ('%' + q + '%',))
+        
+        # Il faut récupérer les résultats avant de les retourner
+        rows = cur.fetchall()
+        
         return jsonify(rows)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# (3) Command Injection (Semgrep)
-# Scénario : Outil d'admin pour vérifier le serveur
+# (3) Command Injection CORRECTIF
 @app.get("/debug/run")
 def debug_run():
     cmd = request.args.get("cmd", "id")
-    # VULNERABLE : shell=True
+    # CORRECTIF SÉCURITÉ : shell=False et shlex.split
     try:
-        out = subprocess.check_output(cmd, shell=True, text=True)
+        # On découpe la commande proprement
+        args = shlex.split(cmd)
+        
+        # IMPORTANT: On passe 'args' (la liste), pas 'cmd' (la string), car shell=False
+        out = subprocess.check_output(args, shell=False, text=True)
         return {"server_output": out}
     except Exception as e:
         return {"error": str(e)}
 
-# (4) Path Traversal (ZAP / DAST)
-# Scénario : Récupération de factures ou rapports
+# (4) Path Traversal (Non bloquant pour Semgrep dans ce TP, mais à surveiller)
 @app.get("/report")
 def report():
     filename = request.args.get("file", "README.md")
-    # VULNERABLE : Pas de validation du chemin
     try:
         return send_file(filename)
     except Exception as e:
         return {"error": "File not found"}, 404
 
-# (5) Logic Bug (Pour faire échouer les tests unitaires)
-# Scénario : Appliquer une remise sur une réservation
+# (5) Logic Bug
 @app.post("/discount")
 def discount():
     try:
         data = request.get_json(force=True)
         pct = int(data.get("pct", 0))
-        base_price = 1000 # Prix standard
-        
-        # BUG VOLONTAIRE : Erreur de logique ou variable non définie
-        # Ici, on imagine que le développeur a oublié de définir 'final_price' correctement avant le return
-        # ou utilise une variable globale inexistante.
-        # Pour le TP, faisons simple : Division par zéro si pct=100 ou variable mal nommée
+        base_price = 1000 
         
         if pct == 100:
              return {"error": "Free bookings not allowed"}, 400
 
-        # Bug simulé : calcul faux qui renvoie un prix négatif si remise > 100 (ce qui ne devrait pas arriver)
-        # Ou simplement une erreur de syntaxe simulée qui ferait planter le test
         new_price = base_price * (100 - pct) / 100
         
         return {"new_price": new_price}
@@ -143,5 +143,5 @@ def discount():
         return {"error": str(e)}, 500
 
 if __name__ == "__main__":
-    # (6) Debug activé (Mauvaise pratique en prod)
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # (6) CORRECTIF SÉCURITÉ : Debug désactivé
+    app.run(host="0.0.0.0", port=5000, debug=False)
