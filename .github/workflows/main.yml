@@ -61,7 +61,7 @@ jobs:
       # On lance l'app pour pouvoir l'attaquer
       - name: Build & Run App
         run: |
-          docker build -t myapp:target .
+          docker build -t myapp:target ./services/catalog
           docker run -d -p 5000:5000 --name target-app myapp:target
           sleep 5 # Attendre que l'app démarre
 
