@@ -34,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Important pour scanner l'historique Git
+          fetch-depth: 1 # On scan uniquement le code actuel
 
       # Gate 2 : Gitleaks (Secrets) - Bloque si un secret est trouvé
       - name: Gitleaks Secret Scan
