@@ -7,6 +7,7 @@ permissions:
   issues: write
   checks: write
   pull-requests: write
+
 jobs:
 
   # ÉTAPE 1 : ANALYSE DU CODE (SAST & SECRETS)
@@ -53,36 +54,33 @@ jobs:
           severity: 'CRITICAL,HIGH'
         # Ce step va échouer car l'image python:3.7-alpine a des failles critiques
 
- # ÉTAPE 3 : DAST (Test dynamique)
-dast-scan:
-  needs: build-and-scan-image
-  runs-on: ubuntu-latest
-  steps:
-    - uses: actions/checkout@v3
+  # ÉTAPE 3 : DAST (Test dynamique)
+  dast-scan:
+    needs: build-and-scan-image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
 
-    # On lance l'app pour pouvoir l'attaquer
-    - name: Build & Run App
-      run: |
-        docker build -t myapp:target ./services/catalog
-        docker run -d -p 5000:5000 --name target-app myapp:target
-        sleep 5 # Attendre que l'app démarre
+      # On lance l'app pour pouvoir l'attaquer
+      - name: Build & Run App
+        run: |
+          docker build -t myapp:target ./services/catalog
+          docker run -d -p 5000:5000 --name target-app myapp:target
+          sleep 5 # Attendre que l'app démarre
 
-    # --- AJOUTER CECI ICI ---
-    - name: Fix permissions for ZAP
-      run: chmod -R 777 .
-    # ------------------------
+      - name: Fix permissions for ZAP
+        run: chmod -R 777 .
 
-    # 4. OWASP ZAP : Scan dynamique
-    - name: ZAP Scan
-      uses: zaproxy/action-baseline@v0.7.0
-      with:
-        target: 'http://localhost:5000'
-        fail_action: true # Bloquer si alerte rouge
+      # 4. OWASP ZAP : Scan dynamique
+      - name: ZAP Scan
+        uses: zaproxy/action-baseline@v0.7.0
+        with:
+          target: 'http://localhost:5000'
+          fail_action: true # Bloquer si alerte rouge
 
-#Partie F du TP2
-
-runtime_gate:
-    needs: dast-scan # S'exécute après le DAST [cite: 99]
+  # ÉTAPE 4 : RUNTIME MONITORING GATE (Partie F du TP2)
+  runtime_gate:
+    needs: dast-scan # S'exécute après le DAST
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -101,7 +99,7 @@ runtime_gate:
 
       - name: Run Runtime Security Gate
         run: |
-          # Exécute la gate avec les paramètres configurés [cite: 98]
+          # Exécute la gate avec les paramètres configurés
           BASE_URL=http://localhost:5002 SERVICE=catalog MAX_5XX=5 bash monitoring/log_gate.sh
         
       - name: Archive Reports
