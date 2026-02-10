@@ -82,7 +82,7 @@ dast-scan:
 #Partie F du TP2
 
 runtime_gate:
-    [cite_start]needs: dast-scan # S'exécute après le DAST [cite: 99]
+    needs: dast-scan # S'exécute après le DAST [cite: 99]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -105,7 +105,7 @@ runtime_gate:
           BASE_URL=http://localhost:5002 SERVICE=catalog MAX_5XX=5 bash monitoring/log_gate.sh
         
       - name: Archive Reports
-        [cite_start]if: always() # Conserve les rapports même en cas d'échec 
+        if: always() # Conserve les rapports même en cas d'échec 
         uses: actions/upload-artifact@v3
         with:
           name: runtime-monitoring-reports
