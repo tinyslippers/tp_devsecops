@@ -104,3 +104,31 @@ Chaque scanner est configuré avec un seuil de blocage (**Gate**). [cite_start]S
 ### Preuve d'efficacité (Avant / Après)
 * 🔴 **Branche `vuln-demo`** : Le pipeline échoue à l'étape "Security Static" (Gitleaks/Semgrep) et "Container Security" (Trivy).
 * 🟢 **Branche `main`** : Après correction du code (`app.py`) et mise à jour du Dockerfile, tous les voyants sont au vert.
+
+* ## 5. Guide de déploiement et supervision
+
+### Déploiement staging (reproductible)
+Le staging se lance via Docker Compose afin de reproduire un environnement de test proche de la prod.
+
+
+
+
+### ✅ Partie 6 (à coller)
+md
+## 6. Retour d’expérience et améliorations possibles
+
+### Points positifs
+- Les gates (tests, secrets, SAST, SCA, DAST) permettent de bloquer tôt les problèmes et d’éviter la propagation jusqu’au déploiement.
+- La séparation `vuln-demo` (pipeline rouge) / `main` (pipeline verte) rend la démonstration simple et pédagogique.
+- La conservation des rapports en artefacts améliore la traçabilité et accélère le triage.
+
+### Limites rencontrées
+- Les scanners peuvent générer des faux positifs (ex : règles Semgrep contextuelles) nécessitant du tuning.
+- Le DAST (ZAP baseline) ne couvre pas la logique métier et dépend des routes réellement accessibles durant le scan.
+- La sécurité “runtime” dépend aussi de la configuration réseau (ports exposés, reverse proxy, firewall), hors du code applicatif.
+
+### Améliorations possibles
+- Générer une SBOM (Syft) et la publier en artefact pour renforcer la traçabilité supply-chain.
+- Signer l’image Docker (Cosign) et vérifier la signature avant déploiement.
+- Ajouter une policy-as-code (OPA/Conftest) pour valider `compose.staging.yml` (ex : interdiction d’exposer des ports inutiles).
+- Durcir les headers HTTP (CSP, X-Frame-Options, X-Content-Type-Options) et rendre ces contrôles bloquants via ZAP à partir d’un seuil défini.
