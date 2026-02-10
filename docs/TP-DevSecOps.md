@@ -90,13 +90,13 @@ Identifier les risques majeurs du système et les associer à des contrôles de 
 
 ## Partie 4. Automatisation de la Sécurité (Pipeline CI/CD)
 
-[cite_start]Le pipeline est orchestré via **GitHub Actions** et intègre 4 niveaux de contrôle automatisés[cite: 101].
+Le pipeline est orchestré via **GitHub Actions** et intègre 4 niveaux de contrôle automatisés.
 
 ### Outils intégrés
-1.  [cite_start]**Gitleaks** : Scanne l'historique Git à la recherche de secrets avant même le build[cite: 102].
-2.  [cite_start]**Semgrep** : Analyse le code Python pour détecter les patterns de vulnérabilité (SQLi, RCE)[cite: 103].
-3.  [cite_start]**Trivy (FS & Image)** : Scanne les dépendances (`requirements.txt`) et l'image Docker finale pour les CVEs[cite: 104, 105].
-4.  [cite_start]**OWASP ZAP** : Lance une attaque dynamique sur l'application en staging pour valider la résilience HTTP[cite: 106].
+1.  **Gitleaks** : Scanne l'historique Git à la recherche de secrets avant même le build.
+2.  **Semgrep** : Analyse le code Python pour détecter les patterns de vulnérabilité (SQLi, RCE).
+3.  **Trivy (FS & Image)** : Scanne les dépendances (`requirements.txt`) et l'image Docker finale pour les CVEs.
+4.  **OWASP ZAP** : Lance une attaque dynamique sur l'application en staging pour valider la résilience HTTP.
 
 ### Stratégie des Gates
 Chaque scanner est configuré avec un seuil de blocage (**Gate**). [cite_start]Si une vulnérabilité critique est trouvée, le pipeline s'arrête immédiatement (Exit Code 1) et empêche le déploiement ou la validation de la Pull Request[cite: 63].
@@ -111,10 +111,6 @@ Chaque scanner est configuré avec un seuil de blocage (**Gate**). [cite_start]S
 Le staging se lance via Docker Compose afin de reproduire un environnement de test proche de la prod.
 
 
-
-
-### ✅ Partie 6 (à coller)
-md
 ## 6. Retour d’expérience et améliorations possibles
 
 ### Points positifs
