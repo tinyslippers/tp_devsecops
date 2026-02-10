@@ -78,3 +78,35 @@ dast-scan:
       with:
         target: 'http://localhost:5000'
         fail_action: true # Bloquer si alerte rouge
+
+#Partie F du TP2
+
+runtime_gate:
+    [cite_start]needs: dast-scan # S'exécute après le DAST [cite: 99]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Launch Staging for Monitoring
+        run: |
+          # Redémarrage propre pour isoler les logs du test de trafic 
+          docker compose -f compose.staging.yml down -v
+          docker compose -f compose.staging.yml up -d --build
+          sleep 5
+
+      - name: Run Runtime Security Gate
+        run: |
+          # Exécute la gate avec les paramètres configurés [cite: 98]
+          BASE_URL=http://localhost:5002 SERVICE=catalog MAX_5XX=5 bash monitoring/log_gate.sh
+        
+      - name: Archive Reports
+        [cite_start]if: always() # Conserve les rapports même en cas d'échec 
+        uses: actions/upload-artifact@v3
+        with:
+          name: runtime-monitoring-reports
+          path: reports/

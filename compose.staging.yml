@@ -1,0 +1,8 @@
+services:
+  catalog:
+    build: ./services/catalog
+    container_name: catalog
+    ports:
+      - "5002:5000"  # On change ici : 5002 sur votre Mac -> 5000 dans le Docker
+    environment:
+      - SECRET_KEY=staging-secret-key
